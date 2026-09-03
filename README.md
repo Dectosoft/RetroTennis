@@ -1,2 +1,13 @@
 # RetroTennis
-My take on a retro arcade tennis game. Pick your favorite retro theme, choose mouse or keyboard, 1 player vs cpu, 1 on 1 or practice against a wall.
+
+Dectosoft Studios are proud to announce the release of 'Retro Tennis'. 
+
+Our take on the classic arcade style tennis games of the 70's.
+
+Choose your retro style display, play - player v cpu, player v player or player vs practice wall.
+
+Mouse and keyboard compatible.
+
+Click the settings icon to set up your play just the way you like it!
+
+Have Fun!
