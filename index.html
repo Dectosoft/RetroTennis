@@ -1,0 +1,2562 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Retro Tennis - HTML5 Arcade Game</title>
+    <meta name="description" content="A classic retro Pong style HTML5 tennis arcade game with 1P AI, 2P local, practice mode, authentic Web Audio retro synthesis, CRT effects, and multiple themes." />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+      *, *::before, *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      :root {
+        --bg-color: #0a0a0a;
+        --card-bg: rgba(23, 23, 23, 0.9);
+        --card-border: #262626;
+        --text-primary: #f5f5f5;
+        --text-secondary: #a3a3a3;
+        --text-muted: #737373;
+        --accent-amber: #f59e0b;
+        --accent-amber-hover: #d97706;
+        --accent-amber-glow: rgba(245, 158, 11, 0.3);
+        --accent-emerald: #10b981;
+        --accent-emerald-hover: #059669;
+        --accent-red: #ef4444;
+      }
+
+      body {
+        background-color: var(--bg-color);
+        color: var(--text-primary);
+        font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        user-select: none;
+        -webkit-user-select: none;
+        overflow-x: hidden;
+      }
+
+      .font-arcade {
+        font-family: 'Press Start 2P', monospace;
+      }
+
+      .font-terminal {
+        font-family: 'VT323', monospace;
+      }
+
+      .font-mono {
+        font-family: 'JetBrains Mono', monospace;
+      }
+
+      /* CRT Overlays */
+      .crt-overlay {
+        pointer-events: none;
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(
+          rgba(18, 16, 16, 0) 50%,
+          rgba(0, 0, 0, 0.35) 50%
+        ), linear-gradient(
+          90deg,
+          rgba(255, 0, 0, 0.03),
+          rgba(0, 255, 0, 0.01),
+          rgba(0, 0, 255, 0.03)
+        );
+        background-size: 100% 3px, 6px 100%;
+        z-index: 20;
+        border-radius: inherit;
+        animation: crtFlicker 0.15s infinite;
+      }
+
+      .crt-vignette {
+        pointer-events: none;
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.7), inset 0 0 100px rgba(0, 0, 0, 0.4);
+        z-index: 21;
+        border-radius: inherit;
+      }
+
+      @keyframes crtFlicker {
+        0% { opacity: 0.98; }
+        50% { opacity: 1; }
+        100% { opacity: 0.99; }
+      }
+
+      /* General UI Container Layout */
+      .app-wrapper {
+        width: 100%;
+        max-width: 850px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+      }
+
+      /* Header */
+      header {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--card-border);
+      }
+
+      .brand-title-group {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .brand-logo-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 8px;
+        background: linear-gradient(135deg, #f59e0b, #ea580c);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #0a0a0a;
+        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.25);
+      }
+
+      .brand-title {
+        font-family: 'Press Start 2P', monospace;
+        font-size: 13px;
+        letter-spacing: 1px;
+        color: #f5f5f5;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .brand-badge {
+        font-size: 9px;
+        padding: 2px 6px;
+        background: rgba(245, 158, 11, 0.2);
+        border: 1px solid rgba(245, 158, 11, 0.4);
+        color: #fcd34d;
+        border-radius: 4px;
+      }
+
+      .brand-subtitle {
+        font-size: 11px;
+        color: var(--text-muted);
+        margin-top: 2px;
+      }
+
+      /* Buttons & Controls */
+      button, select, input {
+        font-family: inherit;
+      }
+
+      .icon-btn {
+        background: #171717;
+        border: 1px solid var(--card-border);
+        color: var(--text-secondary);
+        padding: 8px;
+        border-radius: 8px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.15s ease;
+      }
+
+      .icon-btn:hover {
+        background: #262626;
+        color: #ffffff;
+      }
+
+      .icon-btn.active {
+        background: #262626;
+        border-color: rgba(255, 255, 255, 0.3);
+      }
+
+      .icon-btn:active {
+        transform: scale(0.96);
+      }
+
+      .btn-primary {
+        background: var(--accent-emerald);
+        color: #ffffff;
+        border: none;
+        padding: 8px 14px;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 12px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+        transition: all 0.15s ease;
+      }
+
+      .btn-primary:hover {
+        background: var(--accent-emerald-hover);
+      }
+
+      .btn-primary:active {
+        transform: scale(0.96);
+      }
+
+      .btn-secondary {
+        background: #262626;
+        border: 1px solid #404040;
+        color: var(--text-primary);
+        padding: 8px 12px;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 12px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.15s ease;
+      }
+
+      .btn-secondary:hover {
+        background: #333333;
+        color: #ffffff;
+      }
+
+      .btn-secondary:active {
+        transform: scale(0.96);
+      }
+
+      /* Scoreboard */
+      .scoreboard-card {
+        width: 100%;
+        background: var(--card-bg);
+        border: 2px solid var(--card-border);
+        border-radius: 12px;
+        padding: 12px 18px;
+        backdrop-filter: blur(8px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        align-items: center;
+      }
+
+      .player-info {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .player-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 4px;
+      }
+
+      .server-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+        transition: all 0.2s ease;
+      }
+
+      .player-name {
+        font-family: 'Press Start 2P', monospace;
+        font-size: 11px;
+        letter-spacing: 0.5px;
+      }
+
+      .player-score {
+        font-family: 'Press Start 2P', monospace;
+        font-size: 28px;
+        font-weight: bold;
+        letter-spacing: 2px;
+      }
+
+      .center-stats {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 0 16px;
+      }
+
+      .rally-label {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 11px;
+        color: var(--text-muted);
+        font-weight: 600;
+        text-transform: uppercase;
+      }
+
+      .rally-val {
+        font-family: 'Press Start 2P', monospace;
+        font-size: 20px;
+        font-weight: bold;
+        margin: 2px 0;
+      }
+
+      .meta-stats {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 11px;
+        color: var(--text-secondary);
+      }
+
+      .meta-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+      }
+
+      /* Canvas Stage Viewport */
+      .canvas-viewport {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 800 / 500;
+        border-radius: 12px;
+        overflow: hidden;
+        border: 4px solid #262626;
+        background-color: #000000;
+        box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      #gameCanvas {
+        width: 100%;
+        height: 100%;
+        display: block;
+        cursor: crosshair;
+        touch-action: none;
+      }
+
+      /* Controls Bar */
+      .controls-bar {
+        width: 100%;
+        background: var(--card-bg);
+        border: 2px solid var(--card-border);
+        border-radius: 12px;
+        padding: 12px 14px;
+        backdrop-filter: blur(8px);
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      }
+
+      .controls-row {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .control-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .segmented-control {
+        display: flex;
+        align-items: center;
+        background: #000000;
+        border: 1px solid var(--card-border);
+        border-radius: 8px;
+        padding: 2px;
+      }
+
+      .segmented-btn {
+        background: transparent;
+        border: none;
+        color: var(--text-muted);
+        font-size: 11px;
+        font-weight: 600;
+        padding: 5px 9px;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        white-space: nowrap;
+      }
+
+      .segmented-btn.active {
+        background: var(--accent-amber);
+        color: #0a0a0a;
+        font-weight: bold;
+      }
+
+      .select-input {
+        background: #000000;
+        color: var(--text-primary);
+        border: 1px solid var(--card-border);
+        border-radius: 8px;
+        padding: 6px 10px;
+        font-size: 11px;
+        cursor: pointer;
+        outline: none;
+        transition: border 0.15s ease, opacity 0.15s ease;
+      }
+
+      .select-input:focus {
+        border-color: var(--accent-amber);
+      }
+
+      .select-input:disabled {
+        opacity: 0.35;
+        cursor: not-allowed;
+      }
+
+      /* Mobile Touch Pad */
+      .touch-pad {
+        width: 100%;
+        background: rgba(23, 23, 23, 0.85);
+        border: 1px solid var(--card-border);
+        border-radius: 12px;
+        padding: 10px 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
+      .touch-pad.hidden {
+        display: none !important;
+      }
+
+      .touch-dir-group {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+      }
+
+      .touch-label {
+        font-size: 10px;
+        font-weight: bold;
+      }
+
+      .touch-btn-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .touch-dir-btn {
+        width: 52px;
+        height: 46px;
+        background: #262626;
+        border: 1px solid #404040;
+        color: #f5f5f5;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        touch-action: manipulation;
+        transition: all 0.1s ease;
+      }
+
+      .touch-dir-btn:active {
+        background: var(--accent-amber);
+        color: #0a0a0a;
+        transform: scale(0.94);
+      }
+
+      .touch-serve-btn {
+        padding: 10px 20px;
+        background: linear-gradient(135deg, #f59e0b, #eab308);
+        border: 2px solid #fef08a;
+        border-radius: 12px;
+        color: #0a0a0a;
+        font-family: 'Press Start 2P', monospace;
+        font-size: 11px;
+        font-weight: bold;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        box-shadow: 0 4px 14px rgba(245, 158, 11, 0.4);
+        touch-action: manipulation;
+      }
+
+      .touch-serve-btn:active {
+        transform: scale(0.95);
+      }
+
+      /* Modals */
+      .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.82);
+        backdrop-filter: blur(6px);
+        z-index: 100;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.18s ease;
+      }
+
+      .modal-backdrop.open {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      .modal-dialog {
+        width: 100%;
+        max-width: 440px;
+        background: #171717;
+        border: 2px solid #404040;
+        border-radius: 16px;
+        padding: 22px;
+        color: #f5f5f5;
+        position: relative;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 20px 48px rgba(0, 0, 0, 0.8);
+      }
+
+      .modal-close-btn {
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        background: transparent;
+        border: none;
+        color: var(--text-muted);
+        cursor: pointer;
+        padding: 4px;
+        border-radius: 6px;
+      }
+
+      .modal-close-btn:hover {
+        color: #ffffff;
+        background: #262626;
+      }
+
+      .modal-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 18px;
+      }
+
+      .modal-title {
+        font-family: 'Press Start 2P', monospace;
+        font-size: 13px;
+        color: var(--accent-amber);
+      }
+
+      .modal-section {
+        margin-bottom: 16px;
+      }
+
+      .modal-section-label {
+        display: block;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        margin-bottom: 8px;
+      }
+
+      .theme-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      .theme-btn {
+        padding: 10px;
+        background: #0a0a0a;
+        border: 1px solid #262626;
+        border-radius: 8px;
+        text-align: left;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        transition: all 0.15s ease;
+      }
+
+      .theme-btn.active {
+        border-color: var(--accent-amber);
+        background: rgba(245, 158, 11, 0.15);
+      }
+
+      .theme-dot-title {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .theme-color-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        display: inline-block;
+      }
+
+      .theme-name-text {
+        font-size: 11px;
+        font-weight: 600;
+        color: #f5f5f5;
+      }
+
+      .range-slider {
+        width: 100%;
+        accent-color: var(--accent-amber);
+        background: #262626;
+        height: 6px;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+
+      .help-block {
+        background: #0a0a0a;
+        border: 1px solid #262626;
+        border-radius: 10px;
+        padding: 12px;
+        margin-bottom: 10px;
+        font-size: 11px;
+        line-height: 1.6;
+        color: #d4d4d4;
+      }
+
+      .help-title {
+        font-weight: bold;
+        color: #f5f5f5;
+        text-transform: uppercase;
+        margin-bottom: 6px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .kbd-key {
+        display: inline-block;
+        padding: 2px 6px;
+        background: #262626;
+        border: 1px solid #404040;
+        border-radius: 4px;
+        font-weight: bold;
+        color: #ffffff;
+      }
+
+      /* Responsive adjustments */
+      @media (max-width: 640px) {
+        .player-score {
+          font-size: 20px;
+        }
+        .player-name {
+          font-size: 9px;
+        }
+        .rally-val {
+          font-size: 16px;
+        }
+        .meta-stats .hide-mobile {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app-wrapper">
+      <!-- Arcade Header -->
+      <header>
+        <div class="brand-title-group">
+          <div class="brand-logo-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="6" y1="12" x2="10" y2="12"></line>
+              <line x1="8" y1="10" x2="8" y2="14"></line>
+              <line x1="15" y1="13" x2="15.01" y2="13"></line>
+              <line x1="18" y1="11" x2="18.01" y2="11"></line>
+              <rect x="2" y="6" width="20" height="12" rx="2"></rect>
+            </svg>
+          </div>
+          <div>
+            <h1 class="brand-title">
+              RETRO TENNIS
+            </h1>
+            <p class="brand-subtitle">Classic 1970s Retro Arcade Simulation</p>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <button id="topMuteBtn" class="icon-btn" title="Toggle Sound (M)">
+            <svg id="topMuteIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+              <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+            </svg>
+          </button>
+          <button id="fullscreenBtn" class="icon-btn" title="Toggle Fullscreen">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <!-- Scoreboard Card -->
+      <div id="arcadeScoreboard" class="scoreboard-card">
+        <!-- Player 1 Section -->
+        <div class="player-info" style="align-items: flex-start;">
+          <div class="player-header">
+            <span id="p1ServerDot" class="server-dot"></span>
+            <span id="p1Label" class="player-name" style="color: #ffb703;">PLAYER 1</span>
+          </div>
+          <div id="p1Score" class="player-score">00</div>
+        </div>
+
+        <!-- Center Rally & Best Streak -->
+        <div class="center-stats">
+          <div class="rally-label">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path>
+            </svg>
+            <span>RALLY</span>
+          </div>
+          <div id="rallyCountDisplay" class="rally-val" style="color: #f4f3ee;">0</div>
+          <div class="meta-stats">
+            <span class="meta-item" title="High Score Rally Streak">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#eab308" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path>
+                <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path>
+                <path d="M4 22h16"></path>
+                <path d="M10 14.66V17c0 .55-.45 1-1 1H7c-.55 0-1-.45-1-1v-2.34"></path>
+                <path d="M14 14.66V17c0 .55.45 1 1 1h2c.55 0 1-.45 1-1v-2.34"></path>
+                <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path>
+              </svg>
+              Best: <strong id="bestRallyDisplay" style="color: #f5f5f5;">0</strong>
+            </span>
+            <span class="meta-item hide-mobile" title="Total Match Volleys">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+              </svg>
+              Volleys: <strong id="volleysDisplay" style="color: #f5f5f5;">0</strong>
+            </span>
+          </div>
+        </div>
+
+        <!-- Player 2 / AI / Wall Section -->
+        <div class="player-info" style="align-items: flex-end;">
+          <div class="player-header">
+            <span id="p2Label" class="player-name" style="color: #fb8500;">CPU (MEDIUM)</span>
+            <span id="p2ServerDot" class="server-dot"></span>
+          </div>
+          <div id="p2Score" class="player-score">00</div>
+        </div>
+      </div>
+
+      <!-- Court Canvas Viewport -->
+      <div id="canvasContainer" class="canvas-viewport">
+        <canvas id="gameCanvas" width="800" height="500"></canvas>
+        <div id="crtOverlay" class="crt-overlay"></div>
+        <div id="crtVignette" class="crt-vignette"></div>
+      </div>
+
+      <!-- On-Screen Mobile Touch Controls (Toggleable) -->
+      <div id="mobileTouchPad" class="touch-pad hidden">
+        <!-- P1 Direct Movement -->
+        <div class="touch-dir-group">
+          <span class="touch-label" style="color: #ffb703;">P1 CONTROLS</span>
+          <div class="touch-btn-row">
+            <button id="p1UpBtn" class="touch-dir-btn">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="18 15 12 9 6 15"></polyline>
+              </svg>
+            </button>
+            <button id="p1DownBtn" class="touch-dir-btn">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Center Serve / Action Button -->
+        <div>
+          <button id="touchServeBtn" class="touch-serve-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+            </svg>
+            SERVE
+          </button>
+        </div>
+
+        <!-- P2 Movement (Only active in 2P mode) -->
+        <div id="p2TouchGroup" class="touch-dir-group">
+          <span class="touch-label" style="color: #fb8500;">P2 CONTROLS</span>
+          <div class="touch-btn-row">
+            <button id="p2UpBtn" class="touch-dir-btn">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="18 15 12 9 6 15"></polyline>
+              </svg>
+            </button>
+            <button id="p2DownBtn" class="touch-dir-btn">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Controls Toolbar -->
+      <div class="controls-bar">
+        <!-- Row 1: Primary Match Actions (Left) & Game Mode Switcher (Right) -->
+        <div class="controls-row">
+          <div class="control-group">
+            <button id="btnNewMatch" class="btn-primary" title="Start Fresh Match (R)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                <path d="M3 3v5h5"></path>
+              </svg>
+              <span>New Match</span>
+            </button>
+
+            <button id="btnPause" class="btn-secondary" title="Pause / Resume Game (P)">
+              <svg id="pauseIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="6" y="4" width="4" height="16"></rect>
+                <rect x="14" y="4" width="4" height="16"></rect>
+              </svg>
+              <span id="pauseLabel">Pause</span>
+            </button>
+
+            <button id="btnAudio" class="btn-secondary" title="Toggle 8-Bit Synth Sound (M)">
+              <svg id="audioIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+              </svg>
+              <span id="audioLabel">Audio On</span>
+            </button>
+          </div>
+
+          <!-- Fixed-Position Mode & Difficulty Controls (Anchored Right) -->
+          <div class="control-group">
+            <div class="segmented-control">
+              <button id="mode1pBtn" class="segmented-btn active" onclick="setGameMode('1p')">1P vs AI</button>
+              <button id="mode2pBtn" class="segmented-btn" onclick="setGameMode('2p')">2P Local</button>
+              <button id="modePracticeBtn" class="segmented-btn" onclick="setGameMode('practice')">Wall Mode</button>
+            </div>
+
+            <select id="diffSelectDropdown" class="select-input" title="AI Difficulty Level">
+              <option value="easy">Easy AI</option>
+              <option value="medium" selected>Medium AI</option>
+              <option value="hard">Hard AI</option>
+              <option value="master">Master AI</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Row 2: Court Theme (Left) & Auxiliary Tools (Right) -->
+        <div class="controls-row">
+          <div class="control-group">
+            <select id="themeSelectDropdown" class="select-input" title="Court Color Theme">
+              <option value="retro">Retro 2600 (Court Green)</option>
+              <option value="monochrome">Classic Monochrome Pong</option>
+              <option value="amber">1980s Amber CRT</option>
+              <option value="cyber">Cyberpunk Neon</option>
+            </select>
+          </div>
+
+          <div class="control-group">
+            <!-- Keyboard / Mouse Follow Toggle Button -->
+            <button id="btnControlModeToggle" class="btn-secondary" title="Toggle between Keyboard and Mouse Control" style="font-size: 11px;">
+              <svg id="controlModeIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+                <line x1="6" y1="8" x2="6" y2="8"></line>
+                <line x1="10" y1="8" x2="10" y2="8"></line>
+                <line x1="14" y1="8" x2="14" y2="8"></line>
+                <line x1="18" y1="8" x2="18" y2="8"></line>
+                <line x1="6" y1="12" x2="6" y2="12"></line>
+                <line x1="18" y1="12" x2="18" y2="12"></line>
+                <line x1="7" y1="16" x2="17" y2="16"></line>
+              </svg>
+              <span id="controlModeLabel">Keyboard</span>
+            </button>
+
+            <button id="btnCrtToggle" class="icon-btn" title="Toggle CRT Scanline Overlay">
+              <svg id="crtToggleIcon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="3" width="20" height="14" rx="2"></rect>
+                <line x1="8" y1="21" x2="16" y2="21"></line>
+                <line x1="12" y1="17" x2="12" y2="21"></line>
+              </svg>
+            </button>
+
+            <button id="btnTouchToggle" class="icon-btn" title="Toggle On-Screen Touch Controls">
+              <svg id="touchToggleIcon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+                <line x1="12" y1="18" x2="12.01" y2="18"></line>
+              </svg>
+            </button>
+
+            <button id="btnHelpModal" class="icon-btn" title="Help & Instructions">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+              </svg>
+            </button>
+
+            <button id="btnSettingsModal" class="icon-btn" title="Game Settings">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal-backdrop">
+      <div class="modal-dialog">
+        <button id="closeSettingsBtn" class="modal-close-btn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+
+        <div class="modal-header">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="4" y1="21" x2="4" y2="14"></line>
+            <line x1="4" y1="10" x2="4" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12" y2="3"></line>
+            <line x1="20" y1="21" x2="20" y2="16"></line>
+            <line x1="20" y1="12" x2="20" y2="3"></line>
+            <line x1="1" y1="14" x2="7" y2="14"></line>
+            <line x1="9" y1="8" x2="15" y2="8"></line>
+            <line x1="17" y1="16" x2="23" y2="16"></line>
+          </svg>
+          <h2 class="modal-title">GAME SETTINGS</h2>
+        </div>
+
+        <!-- Volume Slider -->
+        <div class="modal-section">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span class="modal-section-label" style="margin-bottom: 0;">Retro Synth Volume</span>
+            <span id="volumePercentDisplay" style="font-size: 12px; color: var(--text-secondary);">50%</span>
+          </div>
+          <input id="volumeSlider" type="range" min="0" max="1" step="0.05" value="0.5" class="range-slider" />
+        </div>
+
+        <!-- Visual Theme Palettes -->
+        <div class="modal-section">
+          <label class="modal-section-label">Visual Palette & Court Style</label>
+          <div class="theme-grid">
+            <button class="theme-btn" onclick="setTheme('retro')">
+              <div class="theme-dot-title">
+                <span class="theme-color-dot" style="background-color: #f4f3ee;"></span>
+                <span class="theme-name-text">Retro 2600</span>
+              </div>
+            </button>
+            <button class="theme-btn" onclick="setTheme('monochrome')">
+              <div class="theme-dot-title">
+                <span class="theme-color-dot" style="background-color: #ffffff;"></span>
+                <span class="theme-name-text">Monochrome</span>
+              </div>
+            </button>
+            <button class="theme-btn" onclick="setTheme('amber')">
+              <div class="theme-dot-title">
+                <span class="theme-color-dot" style="background-color: #ffe066;"></span>
+                <span class="theme-name-text">Amber CRT</span>
+              </div>
+            </button>
+            <button class="theme-btn" onclick="setTheme('cyber')">
+              <div class="theme-dot-title">
+                <span class="theme-color-dot" style="background-color: #ffe600;"></span>
+                <span class="theme-name-text">Cyberpunk</span>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <!-- CRT Scanline Checkbox -->
+        <div class="modal-section" style="display: flex; justify-content: space-between; align-items: center; background: #0a0a0a; border: 1px solid #262626; border-radius: 8px; padding: 10px 14px;">
+          <span style="font-size: 12px; font-weight: 600; color: #d4d4d4;">CRT Scanlines & Tube Vignette</span>
+          <input id="settingsCrtCheckbox" type="checkbox" checked style="width: 18px; height: 18px; accent-color: var(--accent-amber); cursor: pointer;" />
+        </div>
+
+        <!-- Scoring System -->
+        <div class="modal-section">
+          <label class="modal-section-label">Scoring System</label>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
+            <button id="scoreModeArcadeBtn" class="btn-secondary" onclick="setScoringType('arcade')" style="justify-content: center;">Arcade Points</button>
+            <button id="scoreModeTennisBtn" class="btn-secondary" onclick="setScoringType('tennis')" style="justify-content: center;">Tennis (15, 30, 40)</button>
+          </div>
+          <div id="arcadeTargetPtsRow" style="display: flex; align-items: center; justify-content: space-between; background: #0a0a0a; border: 1px solid #262626; border-radius: 8px; padding: 8px 12px; font-size: 11px;">
+            <span style="color: #a3a3a3;">Play to points:</span>
+            <div style="display: flex; gap: 6px;">
+              <button class="segmented-btn" onclick="setTargetScore(5)">5</button>
+              <button class="segmented-btn active" onclick="setTargetScore(11)">11</button>
+              <button class="segmented-btn" onclick="setTargetScore(21)">21</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Player 1 Control Preference -->
+        <div class="modal-section">
+          <label class="modal-section-label">Primary Player 1 Control</label>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+            <button id="ctrlKeyboardBtn" class="btn-secondary active" onclick="setControlType('keyboard')" style="justify-content: center;">Keyboard (W/S)</button>
+            <button id="ctrlMouseBtn" class="btn-secondary" onclick="setControlType('mouse')" style="justify-content: center;">Mouse Follow</button>
+          </div>
+        </div>
+
+        <!-- Reset High Score -->
+        <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 12px; border-top: 1px solid #262626; margin-bottom: 18px;">
+          <span style="font-size: 11px; color: #a3a3a3;">Best Rally Record: <strong id="modalHighScoreDisplay" style="color: #f59e0b;">0</strong></span>
+          <button id="btnResetHighScore" style="background: transparent; border: none; color: #ef4444; font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+            Reset High Score
+          </button>
+        </div>
+
+        <button id="closeSettingsBtnBottom" class="btn-secondary" style="width: 100%; justify-content: center; padding: 10px; font-family: 'Press Start 2P', monospace; font-size: 10px;">
+          CLOSE SETTINGS
+        </button>
+      </div>
+    </div>
+
+    <!-- Help & Instructions Modal -->
+    <div id="helpModal" class="modal-backdrop">
+      <div class="modal-dialog">
+        <button id="closeHelpBtn" class="modal-close-btn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+
+        <div class="modal-header">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+          <h2 class="modal-title">HOW TO PLAY</h2>
+        </div>
+
+        <div class="help-block">
+          <div class="help-title" style="color: #10b981;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <circle cx="12" cy="12" r="6"></circle>
+              <circle cx="12" cy="12" r="2"></circle>
+            </svg>
+            Player Controls
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px;">
+            <div><strong style="color: #f59e0b;">Player 1:</strong> <span class="kbd-key">W</span> / <span class="kbd-key">S</span> (or Mouse)</div>
+            <div><strong style="color: #fb8500;">Player 2:</strong> <span class="kbd-key">↑</span> / <span class="kbd-key">↓</span> (2P Mode)</div>
+            <div><strong>Serve / Start:</strong> <span class="kbd-key">Space</span> or Click</div>
+            <div><strong>Pause Match:</strong> <span class="kbd-key">P</span> or <span class="kbd-key">Esc</span></div>
+            <div><strong>Toggle Audio:</strong> <span class="kbd-key">M</span></div>
+            <div><strong>Restart Match:</strong> <span class="kbd-key">R</span></div>
+          </div>
+        </div>
+
+        <div class="help-block">
+          <div class="help-title" style="color: #facc15;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"></path>
+            </svg>
+            Authentic Angle Mechanics
+          </div>
+          <p>• <strong style="color: #fcd34d;">Edge Deflection:</strong> Hitting the ball near the edge of your paddle deflects it at sharp angles and higher smash speed. Center hits return straight.</p>
+          <p style="margin-top: 4px;">• <strong style="color: #fcd34d;">Rally Acceleration:</strong> Every successful volley increases ball speed by 3%, pushing reaction times.</p>
+          <p style="margin-top: 4px;">• <strong style="color: #fcd34d;">Spin & Momentum:</strong> Moving your paddle vertically during ball contact adds spin and vertical impulse.</p>
+        </div>
+
+        <div class="help-block">
+          <div class="help-title" style="color: #38bdf8;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="16" x2="12" y2="12"></line>
+              <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+            Game Modes
+          </div>
+          <p>• <strong>1P vs AI:</strong> 4 difficulty tiers ranging from Easy to Master with anticipation.</p>
+          <p>• <strong>2P Local:</strong> Head-to-head 2-player match on the same keyboard or touch screen.</p>
+          <p>• <strong>Rebound Wall:</strong> Solo practice mode against a brick rebound court wall.</p>
+        </div>
+
+        <button id="closeHelpBtnBottom" class="btn-secondary" style="width: 100%; justify-content: center; padding: 10px; font-family: 'Press Start 2P', monospace; font-size: 10px;">
+          GOT IT, LET'S PLAY!
+        </button>
+      </div>
+    </div>
+
+    <!-- Complete Vanilla JavaScript Game Engine & Audio Synthesizer -->
+    <script>
+      /* ==========================================================================
+         1. CONSTANTS & THEMES
+         ========================================================================== */
+      const CANVAS_WIDTH = 800;
+      const CANVAS_HEIGHT = 500;
+      const PADDLE_WIDTH = 12;
+      const PADDLE_HEIGHT = 78;
+      const BALL_SIZE = 12;
+      const BASE_BALL_SPEED = 7.5;
+      const MAX_BALL_SPEED = 15.5;
+      const SPEED_INCREASE_FACTOR = 1.03;
+      const PHYSICS_STEP = 1 / 60;
+
+      const TENNIS_SCORES = ['0', '15', '30', '40'];
+
+      const THEMES = {
+        retro: {
+          name: 'Retro 2600 (Court Green)',
+          background: '#1b4322',
+          courtLines: 'rgba(255, 255, 255, 0.35)',
+          player1: '#ffb703',
+          player2: '#fb8500',
+          ball: '#f4f3ee',
+          net: '#e9d8a6',
+          wall: '#9c6644',
+          text: '#ffffff',
+          glow: false,
+        },
+        monochrome: {
+          name: 'Classic Monochrome Pong',
+          background: '#000000',
+          courtLines: 'rgba(255, 255, 255, 0.25)',
+          player1: '#ffffff',
+          player2: '#ffffff',
+          ball: '#ffffff',
+          net: '#ffffff',
+          wall: '#aaaaaa',
+          text: '#ffffff',
+          glow: false,
+        },
+        amber: {
+          name: '1980s Amber CRT',
+          background: '#1a1000',
+          courtLines: 'rgba(255, 176, 0, 0.3)',
+          player1: '#ffb000',
+          player2: '#ffcc00',
+          ball: '#ffe066',
+          net: '#ff9900',
+          wall: '#cc7a00',
+          text: '#ffb000',
+          glow: true,
+        },
+        cyber: {
+          name: 'Cyberpunk Neon',
+          background: '#090915',
+          courtLines: 'rgba(0, 255, 204, 0.25)',
+          player1: '#00f0ff',
+          player2: '#ff0055',
+          ball: '#ffe600',
+          net: '#bd00ff',
+          wall: '#00ffcc',
+          text: '#ffffff',
+          glow: true,
+        },
+      };
+
+      // Legacy fallback support for 'atari'
+      THEMES.atari = THEMES.retro;
+
+      function getTheme(key) {
+        if (key && THEMES[key]) {
+          return THEMES[key];
+        }
+        return THEMES.retro;
+      }
+
+      /* ==========================================================================
+         2. RETRO WEB AUDIO API SYNTHESIZER
+         ========================================================================== */
+      class RetroAudio {
+        constructor() {
+          this.ctx = null;
+          this.muted = (localStorage.getItem('retro_tennis_muted') || localStorage.getItem('atari_tennis_muted')) === 'true';
+          this.volume = parseFloat(localStorage.getItem('retro_tennis_volume') || localStorage.getItem('atari_tennis_volume') || '0.5');
+          this.masterGain = null;
+        }
+
+        init() {
+          if (!this.ctx && typeof window !== 'undefined') {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (AudioCtx) {
+              this.ctx = new AudioCtx();
+              this.masterGain = this.ctx.createGain();
+              this.masterGain.gain.setValueAtTime(this.muted ? 0 : this.volume, this.ctx.currentTime);
+              this.masterGain.connect(this.ctx.destination);
+            }
+          }
+          if (this.ctx && this.ctx.state === 'suspended') {
+            this.ctx.resume();
+          }
+        }
+
+        setVolume(val) {
+          this.volume = Math.max(0, Math.min(1, val));
+          localStorage.setItem('retro_tennis_volume', this.volume.toString());
+          if (this.masterGain && this.ctx && !this.muted) {
+            this.masterGain.gain.setValueAtTime(this.volume, this.ctx.currentTime);
+          }
+        }
+
+        toggleMute() {
+          this.muted = !this.muted;
+          localStorage.setItem('retro_tennis_muted', this.muted.toString());
+          if (this.masterGain && this.ctx) {
+            this.masterGain.gain.setValueAtTime(this.muted ? 0 : this.volume, this.ctx.currentTime);
+          }
+          return this.muted;
+        }
+
+        playTone(freq, type = 'square', duration = 0.08, endFreq = null) {
+          this.init();
+          if (!this.ctx || this.muted || this.volume <= 0) return;
+
+          try {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+
+            osc.type = type;
+            const now = this.ctx.currentTime;
+            osc.frequency.setValueAtTime(freq, now);
+
+            if (endFreq !== null) {
+              osc.frequency.exponentialRampToValueAtTime(Math.max(20, endFreq), now + duration);
+            }
+
+            gain.gain.setValueAtTime(0.25, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+            osc.connect(gain);
+            if (this.masterGain) {
+              gain.connect(this.masterGain);
+            } else {
+              gain.connect(this.ctx.destination);
+            }
+
+            osc.start(now);
+            osc.stop(now + duration);
+          } catch (e) {}
+        }
+
+        playPaddleHit(hitOffsetRatio = 0, isSmash = false) {
+          const baseFreq = isSmash ? 380 : 220;
+          const freq = baseFreq + Math.abs(hitOffsetRatio) * 160;
+          this.playTone(freq, 'square', isSmash ? 0.12 : 0.08);
+        }
+
+        playWallBounce() {
+          this.playTone(480, 'square', 0.06);
+        }
+
+        playServe() {
+          this.playTone(300, 'square', 0.1, 550);
+        }
+
+        playScore(isPlayerPoint = true) {
+          if (isPlayerPoint) {
+            this.playTone(440, 'square', 0.1);
+            setTimeout(() => this.playTone(660, 'square', 0.18), 100);
+          } else {
+            this.playTone(180, 'sawtooth', 0.22, 90);
+          }
+        }
+
+        playVictory() {
+          const notes = [330, 392, 523, 659];
+          notes.forEach((freq, idx) => {
+            setTimeout(() => {
+              this.playTone(freq, 'square', 0.15);
+            }, idx * 120);
+          });
+        }
+
+        playDefeat() {
+          const notes = [440, 392, 330, 220];
+          notes.forEach((freq, idx) => {
+            setTimeout(() => {
+              this.playTone(freq, 'sawtooth', 0.2, freq * 0.8);
+            }, idx * 150);
+          });
+        }
+
+        playMenuClick() {
+          this.playTone(700, 'triangle', 0.04);
+        }
+      }
+
+      const retroAudio = new RetroAudio();
+
+      /* ==========================================================================
+         3. PARTICLE ENGINE
+         ========================================================================== */
+      class Particle {
+        constructor(x, y, color, vx, vy, life = 22) {
+          this.x = x;
+          this.y = y;
+          this.color = color;
+          this.vx = vx !== undefined ? vx : (Math.random() - 0.5) * 6;
+          this.vy = vy !== undefined ? vy : (Math.random() - 0.5) * 6;
+          this.size = Math.random() * 3 + 2;
+          this.life = life;
+          this.maxLife = life;
+        }
+
+        update() {
+          this.x += this.vx;
+          this.y += this.vy;
+          this.life--;
+        }
+
+        draw(ctx) {
+          const alpha = Math.max(0, this.life / this.maxLife);
+          ctx.save();
+          ctx.globalAlpha = alpha;
+          ctx.fillStyle = this.color;
+          ctx.fillRect(this.x, this.y, this.size, this.size);
+          ctx.restore();
+        }
+      }
+
+      /* ==========================================================================
+         4. CORE GAME STATE & ENGINE
+         ========================================================================== */
+      const canvas = document.getElementById('gameCanvas');
+      const ctx = canvas.getContext('2d');
+
+      let gameState = 'MENU'; // 'MENU' | 'SERVING' | 'PLAYING' | 'SCORED' | 'GAMEOVER' | 'PAUSED'
+      let prevState = 'MENU';
+      let gameMode = '1p'; // '1p' | '2p' | 'practice'
+      let difficulty = 'medium'; // 'easy' | 'medium' | 'hard' | 'master'
+      let scoringType = 'arcade'; // 'arcade' | 'tennis'
+      let targetScore = 11;
+      let themeKey = 'retro';
+      let crtEnabled = true;
+      let controlType = 'keyboard'; // 'keyboard' | 'mouse'
+      let showTouchPad = false;
+
+      let bannerText = 'RETRO TENNIS';
+      let bannerSubText = 'PRESS SPACE OR TAP TO SERVE';
+
+      // Scores & Stats
+      const stats = {
+        rallyCount: 0,
+        maxRally: 0,
+        totalVolleys: 0,
+        server: 1,
+        p1Wins: 0,
+        p2Wins: 0,
+        cpuWins: 0,
+      };
+
+      // Tennis score specifics
+      let tennisScoreP1 = 0;
+      let tennisScoreP2 = 0;
+      let tennisGamesP1 = 0;
+      let tennisGamesP2 = 0;
+      let tennisAdvantage = 0; // 0: none, 1: P1, 2: P2
+
+      // Paddle & Ball Models
+      const p1 = {
+        x: 30,
+        y: (CANVAS_HEIGHT - PADDLE_HEIGHT) / 2,
+        w: PADDLE_WIDTH,
+        h: PADDLE_HEIGHT,
+        vy: 0,
+        speed: 8.8,
+        score: 0,
+        movingDir: 0,
+      };
+
+      const p2 = {
+        x: CANVAS_WIDTH - 30 - PADDLE_WIDTH,
+        y: (CANVAS_HEIGHT - PADDLE_HEIGHT) / 2,
+        w: PADDLE_WIDTH,
+        h: PADDLE_HEIGHT,
+        vy: 0,
+        speed: 8.8,
+        score: 0,
+        reactionTimer: 0,
+        mistakeOffset: 0,
+        predictionY: CANVAS_HEIGHT / 2,
+        movingDir: 0,
+      };
+
+      const ball = {
+        x: CANVAS_WIDTH / 2,
+        y: CANVAS_HEIGHT / 2,
+        size: BALL_SIZE,
+        vx: 0,
+        vy: 0,
+        speed: BASE_BALL_SPEED,
+        trail: [],
+        lastHitBy: 0,
+      };
+
+      let particles = [];
+      const keys = {};
+      let mouseY = CANVAS_HEIGHT / 2;
+      let stateTimer = 0;
+      let screenShake = 0;
+
+      // Hydrate from localStorage
+      function initStoragePreferences() {
+        const savedThemeRaw = localStorage.getItem('retro_tennis_theme') || localStorage.getItem('atari_tennis_theme');
+        if (savedThemeRaw) {
+          if (savedThemeRaw === 'atari' || savedThemeRaw === 'retro') themeKey = 'retro';
+          else if (THEMES[savedThemeRaw]) themeKey = savedThemeRaw;
+        }
+
+        const savedCrt = localStorage.getItem('retro_tennis_crt') || localStorage.getItem('atari_tennis_crt');
+        if (savedCrt !== null) crtEnabled = savedCrt !== 'false';
+
+        const savedControl = localStorage.getItem('retro_tennis_control') || localStorage.getItem('atari_tennis_control');
+        if (savedControl === 'keyboard' || savedControl === 'mouse') controlType = savedControl;
+
+        const savedHigh = parseInt(localStorage.getItem('retro_tennis_high_rally') || localStorage.getItem('atari_tennis_high_rally') || '0', 10);
+        stats.maxRally = isNaN(savedHigh) ? 0 : savedHigh;
+
+        // Auto-enable touch pad if on touch device
+        if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) {
+          showTouchPad = true;
+        }
+      }
+
+      function spawnSparks(x, y, color, count = 8) {
+        for (let i = 0; i < count; i++) {
+          particles.push(new Particle(x, y, color));
+        }
+      }
+
+      function resetPaddleDimensions() {
+        p1.w = PADDLE_WIDTH;
+        p1.h = PADDLE_HEIGHT;
+        p1.x = 30;
+        p1.y = (CANVAS_HEIGHT - PADDLE_HEIGHT) / 2;
+
+        if (gameMode === 'practice') {
+          p2.w = 16;
+          p2.h = CANVAS_HEIGHT - 20;
+          p2.x = CANVAS_WIDTH - 22;
+          p2.y = 10;
+        } else {
+          p2.w = PADDLE_WIDTH;
+          p2.h = PADDLE_HEIGHT;
+          p2.x = CANVAS_WIDTH - 30 - PADDLE_WIDTH;
+          p2.y = (CANVAS_HEIGHT - PADDLE_HEIGHT) / 2;
+        }
+      }
+
+      function getTennisDisplayStrings() {
+        let p1Str = `${tennisGamesP1}`;
+        let p2Str = `${tennisGamesP2}`;
+
+        if (scoringType === 'tennis') {
+          const isDeuce = tennisScoreP1 === 3 && tennisScoreP2 === 3;
+          const p1Point = isDeuce && tennisAdvantage === 1 ? 'AD' : (isDeuce && tennisAdvantage === 2 ? '40' : TENNIS_SCORES[tennisScoreP1]);
+          const p2Point = isDeuce && tennisAdvantage === 2 ? 'AD' : (isDeuce && tennisAdvantage === 1 ? '40' : TENNIS_SCORES[tennisScoreP2]);
+          p1Str += ` [${p1Point}]`;
+          p2Str += ` [${p2Point}]`;
+        } else {
+          p1Str = p1.score.toString().padStart(2, '0');
+          p2Str = gameMode === 'practice' ? 'WALL' : p2.score.toString().padStart(2, '0');
+        }
+
+        return { p1Str, p2Str };
+      }
+
+      function updateHUD() {
+        const theme = getTheme(themeKey);
+        const { p1Str, p2Str } = getTennisDisplayStrings();
+
+        // Scoreboard elements
+        document.getElementById('p1Score').textContent = p1Str;
+        document.getElementById('p1Score').style.color = theme.text;
+        document.getElementById('p2Score').textContent = p2Str;
+        document.getElementById('p2Score').style.color = theme.text;
+
+        document.getElementById('p1Label').style.color = theme.player1;
+        if (gameMode === 'practice') {
+          document.getElementById('p2Label').textContent = 'REBOUND WALL';
+          document.getElementById('p2Label').style.color = theme.wall;
+        } else if (gameMode === '2p') {
+          document.getElementById('p2Label').textContent = 'PLAYER 2';
+          document.getElementById('p2Label').style.color = theme.player2;
+        } else {
+          document.getElementById('p2Label').textContent = `CPU (${difficulty.toUpperCase()})`;
+          document.getElementById('p2Label').style.color = theme.player2;
+        }
+
+        // Server Dots
+        const p1Dot = document.getElementById('p1ServerDot');
+        const p2Dot = document.getElementById('p2ServerDot');
+        p1Dot.style.backgroundColor = stats.server === 1 ? theme.ball : 'transparent';
+        p1Dot.style.boxShadow = stats.server === 1 ? `0 0 8px ${theme.ball}` : 'none';
+        p2Dot.style.backgroundColor = (stats.server === 2 && gameMode !== 'practice') ? theme.ball : 'transparent';
+        p2Dot.style.boxShadow = (stats.server === 2 && gameMode !== 'practice') ? `0 0 8px ${theme.ball}` : 'none';
+
+        // Stats numbers
+        document.getElementById('rallyCountDisplay').textContent = stats.rallyCount;
+        document.getElementById('rallyCountDisplay').style.color = theme.ball;
+        document.getElementById('bestRallyDisplay').textContent = stats.maxRally;
+        document.getElementById('volleysDisplay').textContent = stats.totalVolleys;
+        document.getElementById('modalHighScoreDisplay').textContent = stats.maxRally;
+
+        // Button state labels & icons
+        const pauseLabel = document.getElementById('pauseLabel');
+        const pauseIcon = document.getElementById('pauseIcon');
+        if (gameState === 'PAUSED') {
+          pauseLabel.textContent = 'Resume';
+          pauseIcon.setAttribute('stroke', '#10b981');
+        } else {
+          pauseLabel.textContent = 'Pause';
+          pauseIcon.setAttribute('stroke', '#f59e0b');
+        }
+
+        // Audio button state
+        const audioLabel = document.getElementById('audioLabel');
+        const audioIcon = document.getElementById('audioIcon');
+        const topMuteIcon = document.getElementById('topMuteIcon');
+        if (retroAudio.muted) {
+          audioLabel.textContent = 'Muted';
+          audioIcon.setAttribute('stroke', '#ef4444');
+          topMuteIcon.setAttribute('stroke', '#ef4444');
+        } else {
+          audioLabel.textContent = 'Audio On';
+          audioIcon.setAttribute('stroke', '#10b981');
+          topMuteIcon.setAttribute('stroke', '#10b981');
+        }
+
+        // Mode Segmented Buttons
+        document.getElementById('mode1pBtn').className = `segmented-btn ${gameMode === '1p' ? 'active' : ''}`;
+        document.getElementById('mode2pBtn').className = `segmented-btn ${gameMode === '2p' ? 'active' : ''}`;
+        document.getElementById('modePracticeBtn').className = `segmented-btn ${gameMode === 'practice' ? 'active' : ''}`;
+
+        // Keep difficulty dropdown in fixed layout footprint so menus never move or jump
+        const diffSelect = document.getElementById('diffSelectDropdown');
+        diffSelect.value = difficulty;
+        if (gameMode === '1p') {
+          diffSelect.disabled = false;
+          diffSelect.style.opacity = '1';
+          diffSelect.style.pointerEvents = 'auto';
+          diffSelect.style.cursor = 'pointer';
+          diffSelect.title = 'AI Difficulty Level';
+        } else {
+          diffSelect.disabled = true;
+          diffSelect.style.opacity = '0.35';
+          diffSelect.style.pointerEvents = 'none';
+          diffSelect.style.cursor = 'not-allowed';
+          diffSelect.title = 'AI Difficulty (1P vs AI Mode only)';
+        }
+
+        // Theme dropdown sync
+        document.getElementById('themeSelectDropdown').value = themeKey;
+
+        // CRT Overlays & Toggle Button State
+        document.getElementById('crtOverlay').style.display = crtEnabled ? 'block' : 'none';
+        document.getElementById('crtVignette').style.display = crtEnabled ? 'block' : 'none';
+        document.getElementById('settingsCrtCheckbox').checked = crtEnabled;
+
+        const crtBtn = document.getElementById('btnCrtToggle');
+        const crtIcon = document.getElementById('crtToggleIcon');
+        if (crtIcon && crtBtn) {
+          if (crtEnabled) {
+            crtIcon.setAttribute('stroke', '#f59e0b');
+            crtBtn.classList.add('active');
+            crtBtn.title = 'CRT Scanlines: ON (Click to turn off)';
+          } else {
+            crtIcon.setAttribute('stroke', '#ffffff');
+            crtBtn.classList.remove('active');
+            crtBtn.title = 'CRT Scanlines: OFF (Click to turn on)';
+          }
+        }
+
+        // Touch Controls & Toggle Button State
+        const touchPad = document.getElementById('mobileTouchPad');
+        const touchBtn = document.getElementById('btnTouchToggle');
+        const touchIcon = document.getElementById('touchToggleIcon');
+        if (showTouchPad) {
+          touchPad.classList.remove('hidden');
+          document.getElementById('p2TouchGroup').style.display = gameMode === '2p' ? 'flex' : 'none';
+          if (touchIcon && touchBtn) {
+            touchIcon.setAttribute('stroke', '#10b981');
+            touchBtn.classList.add('active');
+            touchBtn.title = 'On-Screen Touch Controls: ON (Click to hide)';
+          }
+        } else {
+          touchPad.classList.add('hidden');
+          if (touchIcon && touchBtn) {
+            touchIcon.setAttribute('stroke', '#ffffff');
+            touchBtn.classList.remove('active');
+            touchBtn.title = 'On-Screen Touch Controls: OFF (Click to show)';
+          }
+        }
+
+        // Control mode button
+        const ctrlLabel = document.getElementById('controlModeLabel');
+        const ctrlIcon = document.getElementById('controlModeIcon');
+        if (controlType === 'mouse') {
+          ctrlLabel.textContent = 'Mouse';
+          ctrlIcon.setAttribute('stroke', '#10b981');
+        } else {
+          ctrlLabel.textContent = 'Keyboard';
+          ctrlIcon.setAttribute('stroke', '#f59e0b');
+        }
+
+        // Settings modal sync
+        document.getElementById('scoreModeArcadeBtn').className = `btn-secondary ${scoringType === 'arcade' ? 'active' : ''}`;
+        document.getElementById('scoreModeTennisBtn').className = `btn-secondary ${scoringType === 'tennis' ? 'active' : ''}`;
+        document.getElementById('arcadeTargetPtsRow').style.display = scoringType === 'arcade' ? 'flex' : 'none';
+        document.getElementById('ctrlKeyboardBtn').className = `btn-secondary ${controlType === 'keyboard' ? 'active' : ''}`;
+        document.getElementById('ctrlMouseBtn').className = `btn-secondary ${controlType === 'mouse' ? 'active' : ''}`;
+
+        // Active theme buttons in modal
+        document.querySelectorAll('.theme-btn').forEach((btn) => {
+          const fnStr = btn.getAttribute('onclick') || '';
+          if (fnStr.includes(`'${themeKey}'`)) {
+            btn.classList.add('active');
+          } else {
+            btn.classList.remove('active');
+          }
+        });
+      }
+
+      function launchBall() {
+        if (gameState !== 'SERVING') return;
+
+        gameState = 'PLAYING';
+        bannerText = '';
+        bannerSubText = '';
+
+        const dir = stats.server === 1 ? 1 : -1;
+        const initialVyRatio = (Math.random() * 0.6 - 0.3); // -0.3 to +0.3
+
+        ball.speed = BASE_BALL_SPEED;
+        ball.vx = dir * ball.speed;
+        ball.vy = initialVyRatio * ball.speed;
+        ball.lastHitBy = stats.server;
+
+        retroAudio.playServe();
+        const currentTheme = getTheme(themeKey);
+        spawnSparks(ball.x, ball.y, currentTheme.ball, 8);
+        updateHUD();
+      }
+
+      function prepareServe(serverNum = 1) {
+        gameState = 'SERVING';
+        stats.server = serverNum;
+        stats.rallyCount = 0;
+        ball.speed = BASE_BALL_SPEED;
+        ball.trail = [];
+        ball.lastHitBy = 0;
+
+        if (serverNum === 1) {
+          ball.x = p1.x + p1.w + 16;
+          ball.y = p1.y + p1.h / 2;
+          bannerText = 'PLAYER 1 SERVE';
+          bannerSubText = 'PRESS SPACE OR TAP TO SERVE';
+        } else {
+          if (gameMode === '1p') {
+            ball.x = p2.x - 16;
+            ball.y = p2.y + p2.h / 2;
+            bannerText = 'CPU SERVING...';
+            bannerSubText = '';
+            setTimeout(() => {
+              if (gameState === 'SERVING' && stats.server === 2) {
+                launchBall();
+              }
+            }, 850);
+          } else {
+            ball.x = p2.x - 16;
+            ball.y = p2.y + p2.h / 2;
+            bannerText = 'PLAYER 2 SERVE';
+            bannerSubText = 'PRESS SPACE OR TAP TO SERVE';
+          }
+        }
+
+        ball.vx = 0;
+        ball.vy = 0;
+        updateHUD();
+      }
+
+      function startNewMatch() {
+        p1.score = 0;
+        p2.score = 0;
+        tennisScoreP1 = 0;
+        tennisScoreP2 = 0;
+        tennisGamesP1 = 0;
+        tennisGamesP2 = 0;
+        tennisAdvantage = 0;
+
+        stats.rallyCount = 0;
+        stats.totalVolleys = 0;
+        stats.server = 1;
+
+        resetPaddleDimensions();
+        particles = [];
+        prepareServe(1);
+      }
+
+      function togglePause() {
+        if (gameState === 'PAUSED') {
+          gameState = prevState;
+          bannerText = '';
+          bannerSubText = '';
+        } else if (gameState === 'PLAYING' || gameState === 'SERVING') {
+          prevState = gameState;
+          gameState = 'PAUSED';
+          bannerText = 'PAUSED';
+          bannerSubText = 'PRESS P OR RESUME TO CONTINUE';
+        }
+        updateHUD();
+      }
+
+      function handleActionKey() {
+        retroAudio.init();
+        if (gameState === 'MENU' || gameState === 'GAMEOVER') {
+          startNewMatch();
+        } else if (gameState === 'SERVING') {
+          launchBall();
+        } else if (gameState === 'PAUSED') {
+          togglePause();
+        }
+      }
+
+      function handlePointScored(scoringPlayer) {
+        gameState = 'SCORED';
+        stateTimer = 1.35;
+        const currentTheme = getTheme(themeKey);
+
+        if (gameMode === 'practice') {
+          retroAudio.playScore(false);
+          bannerText = 'RALLY ENDED';
+          bannerSubText = `RALLY STREAK: ${stats.rallyCount}`;
+          stats.rallyCount = 0;
+          updateHUD();
+          return;
+        }
+
+        if (scoringType === 'tennis') {
+          if (scoringPlayer === 1) {
+            if (tennisScoreP1 < 3) {
+              tennisScoreP1++;
+            } else if (tennisScoreP1 === 3 && tennisScoreP2 < 3) {
+              tennisGamesP1++;
+              tennisScoreP1 = 0;
+              tennisScoreP2 = 0;
+              bannerText = 'GAME PLAYER 1!';
+            } else if (tennisScoreP1 === 3 && tennisScoreP2 === 3) {
+              if (tennisAdvantage === 1) {
+                tennisGamesP1++;
+                tennisScoreP1 = 0;
+                tennisScoreP2 = 0;
+                tennisAdvantage = 0;
+                bannerText = 'GAME PLAYER 1!';
+              } else if (tennisAdvantage === 2) {
+                tennisAdvantage = 0;
+                bannerText = 'DEUCE!';
+              } else {
+                tennisAdvantage = 1;
+                bannerText = 'ADVANTAGE P1';
+              }
+            }
+          } else {
+            if (tennisScoreP2 < 3) {
+              tennisScoreP2++;
+            } else if (tennisScoreP2 === 3 && tennisScoreP1 < 3) {
+              tennisGamesP2++;
+              tennisScoreP1 = 0;
+              tennisScoreP2 = 0;
+              bannerText = gameMode === '1p' ? 'GAME CPU!' : 'GAME PLAYER 2!';
+            } else if (tennisScoreP1 === 3 && tennisScoreP2 === 3) {
+              if (tennisAdvantage === 2) {
+                tennisGamesP2++;
+                tennisScoreP1 = 0;
+                tennisScoreP2 = 0;
+                tennisAdvantage = 0;
+                bannerText = gameMode === '1p' ? 'GAME CPU!' : 'GAME PLAYER 2!';
+              } else if (tennisAdvantage === 1) {
+                tennisAdvantage = 0;
+                bannerText = 'DEUCE!';
+              } else {
+                tennisAdvantage = 2;
+                bannerText = 'ADVANTAGE P2';
+              }
+            }
+          }
+
+          if (!bannerText.includes('GAME')) {
+            bannerText = scoringPlayer === 1 ? 'POINT P1' : 'POINT P2';
+          }
+          bannerSubText = `RALLY: ${stats.rallyCount} VOLLEYS`;
+        } else {
+          if (scoringPlayer === 1) {
+            p1.score++;
+            bannerText = 'POINT PLAYER 1!';
+          } else {
+            p2.score++;
+            bannerText = gameMode === '1p' ? 'POINT CPU!' : 'POINT PLAYER 2!';
+          }
+          bannerSubText = `RALLY: ${stats.rallyCount} VOLLEYS`;
+        }
+
+        const isP1 = scoringPlayer === 1;
+        retroAudio.playScore(isP1);
+        screenShake = 4.5;
+        spawnSparks(ball.x, ball.y, isP1 ? currentTheme.player1 : currentTheme.player2, 20);
+        updateHUD();
+      }
+
+      function checkMatchProgression() {
+        if (gameMode === 'practice') {
+          prepareServe(1);
+          return;
+        }
+
+        let p1Wins = false;
+        let p2Wins = false;
+
+        if (scoringType === 'tennis') {
+          const targetGames = 6;
+          if (tennisGamesP1 >= targetGames && tennisGamesP1 - tennisGamesP2 >= 2) {
+            p1Wins = true;
+          } else if (tennisGamesP2 >= targetGames && tennisGamesP2 - tennisGamesP1 >= 2) {
+            p2Wins = true;
+          }
+        } else {
+          if (p1.score >= targetScore && (p1.score - p2.score >= 2 || targetScore === 5)) {
+            p1Wins = true;
+          } else if (p2.score >= targetScore && (p2.score - p1.score >= 2 || targetScore === 5)) {
+            p2Wins = true;
+          }
+        }
+
+        if (p1Wins || p2Wins) {
+          gameState = 'GAMEOVER';
+          if (p1Wins) {
+            bannerText = '★ PLAYER 1 WINS! ★';
+            stats.p1Wins++;
+            retroAudio.playVictory();
+          } else {
+            bannerText = gameMode === '1p' ? 'CPU WINS MATCH!' : '★ PLAYER 2 WINS! ★';
+            if (gameMode === '1p') {
+              stats.cpuWins++;
+              retroAudio.playDefeat();
+            } else {
+              stats.p2Wins++;
+              retroAudio.playVictory();
+            }
+          }
+          bannerSubText = 'PRESS SPACE OR TAP TO PLAY AGAIN';
+        } else {
+          const nextServer = stats.server === 1 ? 2 : 1;
+          prepareServe(nextServer);
+        }
+        updateHUD();
+      }
+
+      function handlePaddleBounce(paddle, playerNum) {
+        ball.lastHitBy = playerNum;
+        stats.totalVolleys++;
+        stats.rallyCount++;
+
+        if (stats.rallyCount > stats.maxRally) {
+          stats.maxRally = stats.rallyCount;
+          localStorage.setItem('retro_tennis_high_rally', stats.maxRally.toString());
+        }
+
+        // Accelerate ball with rally
+        ball.speed = Math.min(MAX_BALL_SPEED, ball.speed * SPEED_INCREASE_FACTOR);
+
+        // Hit point on paddle (-1 at top, 0 at center, +1 at bottom)
+        const hitPoint = (ball.y - (paddle.y + paddle.h / 2)) / (paddle.h / 2);
+        const clampedHit = Math.max(-1, Math.min(1, hitPoint));
+
+        const dir = playerNum === 1 ? 1 : -1;
+        ball.vx = dir * ball.speed;
+
+        // Angle deflection
+        let verticalRatio = clampedHit * 0.85;
+        if (paddle.vy) {
+          verticalRatio += Math.sign(paddle.vy) * 0.15;
+          verticalRatio = Math.max(-1.0, Math.min(1.0, verticalRatio));
+        }
+        ball.vy = verticalRatio * ball.speed;
+
+        // Reposition ball outside paddle
+        if (playerNum === 1) {
+          ball.x = paddle.x + paddle.w + ball.size / 2 + 1;
+        } else {
+          ball.x = paddle.x - ball.size / 2 - 1;
+        }
+
+        const isSmash = ball.speed > 11.5 || Math.abs(clampedHit) > 0.75;
+        retroAudio.playPaddleHit(clampedHit, isSmash);
+
+        if (isSmash) {
+          screenShake = 3.2;
+        }
+
+        const currentTheme = getTheme(themeKey);
+        const sparkColor = playerNum === 1 ? currentTheme.player1 : currentTheme.player2;
+        spawnSparks(ball.x, ball.y, sparkColor, isSmash ? 14 : 8);
+
+        updateHUD();
+      }
+
+      /* ==========================================================================
+         5. PHYSICS LOOP & RENDERING
+         ========================================================================== */
+      function updateAI(dt) {
+        let speedFactor = 0.72;
+        let errorChance = 0.12;
+        let predictWalls = false;
+        let reactionLag = 0.12;
+
+        switch (difficulty) {
+          case 'easy':
+            speedFactor = 0.52;
+            errorChance = 0.28;
+            reactionLag = 0.22;
+            break;
+          case 'medium':
+            speedFactor = 0.74;
+            errorChance = 0.12;
+            reactionLag = 0.12;
+            break;
+          case 'hard':
+            speedFactor = 0.92;
+            errorChance = 0.04;
+            predictWalls = true;
+            reactionLag = 0.05;
+            break;
+          case 'master':
+            speedFactor = 1.08;
+            errorChance = 0.005;
+            predictWalls = true;
+            reactionLag = 0.015;
+            break;
+        }
+
+        const aiSpeed = p2.speed * speedFactor;
+
+        if (ball.vx > 0) {
+          p2.reactionTimer -= dt;
+
+          if (p2.reactionTimer <= 0) {
+            p2.reactionTimer = reactionLag;
+            let targetY = ball.y;
+
+            if (predictWalls) {
+              const distToAI = p2.x - ball.x;
+              const timeToReach = distToAI / Math.max(0.1, ball.vx);
+              let futureY = ball.y + ball.vy * timeToReach;
+
+              while (futureY < 10 || futureY > CANVAS_HEIGHT - 10) {
+                if (futureY < 10) futureY = 20 - futureY;
+                if (futureY > CANVAS_HEIGHT - 10) futureY = 2 * (CANVAS_HEIGHT - 10) - futureY;
+              }
+              targetY = futureY;
+            }
+
+            if (Math.random() < errorChance) {
+              p2.mistakeOffset = (Math.random() - 0.5) * p2.h * 0.9;
+            } else {
+              p2.mistakeOffset *= 0.5;
+            }
+
+            p2.predictionY = targetY + p2.mistakeOffset;
+          }
+
+          const paddleCenter = p2.y + p2.h / 2;
+          const diff = p2.predictionY - paddleCenter;
+
+          if (Math.abs(diff) > 8) {
+            p2.y += Math.sign(diff) * Math.min(Math.abs(diff), aiSpeed);
+          }
+        } else {
+          const courtCenter = CANVAS_HEIGHT / 2;
+          const paddleCenter = p2.y + p2.h / 2;
+          const diff = courtCenter - paddleCenter;
+
+          if (Math.abs(diff) > 10) {
+            p2.y += Math.sign(diff) * (aiSpeed * 0.4);
+          }
+        }
+      }
+
+      function updatePhysics(dt) {
+        if (gameState === 'PAUSED') return;
+
+        if (screenShake > 0) {
+          screenShake -= dt * 25;
+          if (screenShake < 0) screenShake = 0;
+        }
+
+        // Update particles
+        for (let i = particles.length - 1; i >= 0; i--) {
+          const p = particles[i];
+          p.update();
+          if (p.life <= 0) {
+            particles.splice(i, 1);
+          }
+        }
+
+        // Player 1 Movement
+        const prevY1 = p1.y;
+        if (controlType === 'mouse') {
+          const target = mouseY - p1.h / 2;
+          p1.y += (target - p1.y) * 0.35;
+        } else {
+          const up = keys['KeyW'] || (gameMode !== '2p' && keys['ArrowUp']) || p1.movingDir === -1;
+          const down = keys['KeyS'] || (gameMode !== '2p' && keys['ArrowDown']) || p1.movingDir === 1;
+
+          if (up && !down) {
+            p1.vy = -p1.speed;
+          } else if (down && !up) {
+            p1.vy = p1.speed;
+          } else {
+            p1.vy *= 0.7;
+          }
+          p1.y += p1.vy;
+        }
+        p1.y = Math.max(10, Math.min(CANVAS_HEIGHT - p1.h - 10, p1.y));
+        p1.vy = p1.y - prevY1;
+
+        // Player 2 / AI / Wall Movement
+        const prevY2 = p2.y;
+        if (gameMode === '2p') {
+          p2.w = PADDLE_WIDTH;
+          p2.h = PADDLE_HEIGHT;
+          p2.x = CANVAS_WIDTH - 30 - PADDLE_WIDTH;
+
+          const up = keys['ArrowUp'] || p2.movingDir === -1;
+          const down = keys['ArrowDown'] || p2.movingDir === 1;
+
+          if (up && !down) {
+            p2.vy = -p2.speed;
+          } else if (down && !up) {
+            p2.vy = p2.speed;
+          } else {
+            p2.vy *= 0.7;
+          }
+          p2.y += p2.vy;
+        } else if (gameMode === 'practice') {
+          p2.h = CANVAS_HEIGHT - 20;
+          p2.y = 10;
+          p2.w = 16;
+          p2.x = CANVAS_WIDTH - 22;
+        } else {
+          p2.w = PADDLE_WIDTH;
+          p2.h = PADDLE_HEIGHT;
+          p2.x = CANVAS_WIDTH - 30 - PADDLE_WIDTH;
+          updateAI(dt);
+        }
+        p2.y = Math.max(10, Math.min(CANVAS_HEIGHT - p2.h - 10, p2.y));
+        p2.vy = p2.y - prevY2;
+
+        // Ball Movement
+        if (gameState === 'PLAYING') {
+          ball.trail.push({ x: ball.x, y: ball.y });
+          if (ball.trail.length > 8) {
+            ball.trail.shift();
+          }
+
+          ball.x += ball.vx;
+          ball.y += ball.vy;
+
+          const halfSize = ball.size / 2;
+          const currentTheme = getTheme(themeKey);
+
+          // Top/Bottom Wall Collisions
+          if (ball.y - halfSize <= 10) {
+            ball.y = 10 + halfSize;
+            ball.vy = Math.abs(ball.vy);
+            retroAudio.playWallBounce();
+            spawnSparks(ball.x, 10, currentTheme.net, 6);
+          } else if (ball.y + halfSize >= CANVAS_HEIGHT - 10) {
+            ball.y = CANVAS_HEIGHT - 10 - halfSize;
+            ball.vy = -Math.abs(ball.vy);
+            retroAudio.playWallBounce();
+            spawnSparks(ball.x, CANVAS_HEIGHT - 10, currentTheme.net, 6);
+          }
+
+          // Paddle 1 Collision
+          if (
+            ball.vx < 0 &&
+            ball.x - halfSize <= p1.x + p1.w &&
+            ball.x + halfSize >= p1.x &&
+            ball.y + halfSize >= p1.y &&
+            ball.y - halfSize <= p1.y + p1.h
+          ) {
+            handlePaddleBounce(p1, 1);
+          }
+
+          // Paddle 2 / Wall Collision
+          if (
+            ball.vx > 0 &&
+            ball.x + halfSize >= p2.x &&
+            ball.x - halfSize <= p2.x + p2.w &&
+            ball.y + halfSize >= p2.y &&
+            ball.y - halfSize <= p2.y + p2.h
+          ) {
+            handlePaddleBounce(p2, 2);
+          }
+
+          // Point detection
+          if (ball.x + halfSize < 0) {
+            handlePointScored(2);
+          } else if (ball.x - halfSize > CANVAS_WIDTH) {
+            handlePointScored(1);
+          }
+        } else if (gameState === 'SERVING') {
+          if (stats.server === 1) {
+            ball.y = p1.y + p1.h / 2;
+          } else {
+            ball.y = p2.y + p2.h / 2;
+          }
+        } else if (gameState === 'SCORED') {
+          stateTimer -= dt;
+          if (stateTimer <= 0) {
+            checkMatchProgression();
+          }
+        }
+      }
+
+      function draw() {
+        const theme = getTheme(themeKey);
+
+        ctx.save();
+        if (screenShake > 0) {
+          const shakeX = (Math.random() - 0.5) * screenShake * 2;
+          const shakeY = (Math.random() - 0.5) * screenShake * 2;
+          ctx.translate(shakeX, shakeY);
+        }
+
+        // Court Background
+        ctx.fillStyle = theme.background;
+        ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+        // Court outer boundaries
+        ctx.strokeStyle = theme.courtLines;
+        ctx.lineWidth = 4;
+        ctx.strokeRect(10, 10, CANVAS_WIDTH - 20, CANVAS_HEIGHT - 20);
+
+        // Inner tennis lines
+        if (themeKey === 'retro' || themeKey === 'cyber') {
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(140, 10);
+          ctx.lineTo(140, CANVAS_HEIGHT - 10);
+          ctx.moveTo(CANVAS_WIDTH - 140, 10);
+          ctx.lineTo(CANVAS_WIDTH - 140, CANVAS_HEIGHT - 10);
+          ctx.moveTo(140, CANVAS_HEIGHT / 2);
+          ctx.lineTo(CANVAS_WIDTH - 140, CANVAS_HEIGHT / 2);
+          ctx.stroke();
+        }
+
+        // Net dashed line
+        ctx.fillStyle = theme.net;
+        const segmentHeight = 12;
+        const gap = 10;
+        const netX = CANVAS_WIDTH / 2 - 2;
+        for (let y = 14; y < CANVAS_HEIGHT - 14; y += segmentHeight + gap) {
+          ctx.fillRect(netX, y, 4, segmentHeight);
+        }
+
+        // Particles
+        for (const p of particles) {
+          p.draw(ctx);
+        }
+
+        // Ball Trail & Ball
+        if (gameState === 'PLAYING' || gameState === 'SERVING' || gameState === 'SCORED') {
+          for (let i = 0; i < ball.trail.length; i++) {
+            const t = ball.trail[i];
+            const alpha = ((i + 1) / (ball.trail.length + 1)) * 0.4;
+            ctx.fillStyle = theme.ball;
+            ctx.globalAlpha = alpha;
+            const trailSize = ball.size * (0.6 + 0.4 * (i / ball.trail.length));
+            ctx.fillRect(t.x - trailSize / 2, t.y - trailSize / 2, trailSize, trailSize);
+          }
+          ctx.globalAlpha = 1.0;
+
+          ctx.fillStyle = theme.ball;
+          if (theme.glow) {
+            ctx.shadowColor = theme.ball;
+            ctx.shadowBlur = 12;
+          }
+          ctx.fillRect(
+            ball.x - ball.size / 2,
+            ball.y - ball.size / 2,
+            ball.size,
+            ball.size
+          );
+          ctx.shadowBlur = 0;
+        }
+
+        // Paddles
+        ctx.fillStyle = theme.player1;
+        if (theme.glow) {
+          ctx.shadowColor = theme.player1;
+          ctx.shadowBlur = 10;
+        }
+        ctx.fillRect(p1.x, p1.y, p1.w, p1.h);
+
+        if (gameMode === 'practice') {
+          ctx.fillStyle = theme.wall;
+          if (theme.glow) ctx.shadowColor = theme.wall;
+          for (let y = 10; y < CANVAS_HEIGHT - 10; y += 24) {
+            ctx.fillRect(p2.x, y, p2.w, 20);
+          }
+        } else {
+          ctx.fillStyle = theme.player2;
+          if (theme.glow) ctx.shadowColor = theme.player2;
+          ctx.fillRect(p2.x, p2.y, p2.w, p2.h);
+        }
+        ctx.shadowBlur = 0;
+
+        // Overlay text / Banners
+        ctx.textAlign = 'center';
+        if (gameState === 'MENU') {
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.72)';
+          ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+          ctx.fillStyle = theme.ball;
+          ctx.font = 'bold 32px "Press Start 2P", monospace';
+          ctx.fillText('RETRO TENNIS', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 50);
+
+          ctx.fillStyle = theme.text;
+          ctx.font = '14px "JetBrains Mono", monospace';
+          ctx.fillText('CLASSIC 1970s RETRO ARCADE SIMULATION', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 12);
+
+          if (Math.floor(Date.now() / 480) % 2 === 0) {
+            ctx.fillStyle = theme.player1;
+            ctx.font = 'bold 15px "Press Start 2P", monospace';
+            ctx.fillText('▶ CLICK OR TAP TO SERVE ◀', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 50);
+          }
+
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.65)';
+          ctx.font = '12px "JetBrains Mono", monospace';
+          ctx.fillText('Controls: W/S or Mouse | P: Pause | M: Mute', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 100);
+        } else if (gameState === 'SERVING' || gameState === 'SCORED' || gameState === 'GAMEOVER' || gameState === 'PAUSED') {
+          if (bannerText) {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+            ctx.fillRect(CANVAS_WIDTH / 2 - 240, CANVAS_HEIGHT / 2 - 48, 480, 96);
+            ctx.strokeStyle = theme.courtLines;
+            ctx.lineWidth = 2;
+            ctx.strokeRect(CANVAS_WIDTH / 2 - 240, CANVAS_HEIGHT / 2 - 48, 480, 96);
+
+            ctx.fillStyle = theme.ball;
+            ctx.font = 'bold 20px "Press Start 2P", monospace';
+            ctx.fillText(bannerText, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 10);
+
+            if (bannerSubText) {
+              ctx.fillStyle = theme.text;
+              ctx.font = '13px "JetBrains Mono", monospace';
+              ctx.fillText(bannerSubText, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 24);
+            }
+          }
+        }
+
+        ctx.restore();
+      }
+
+      let lastTime = performance.now();
+      let accumulator = 0;
+
+      function gameLoop(now) {
+        let frameDelta = (now - lastTime) / 1000;
+        lastTime = now;
+
+        if (frameDelta > 0.1) frameDelta = 0.1;
+        accumulator += frameDelta;
+
+        while (accumulator >= PHYSICS_STEP) {
+          updatePhysics(PHYSICS_STEP);
+          accumulator -= PHYSICS_STEP;
+        }
+
+        draw();
+        requestAnimationFrame(gameLoop);
+      }
+
+      /* ==========================================================================
+         6. USER CONTROLS, EVENTS & MODAL BINDINGS
+         ========================================================================== */
+      function setGameMode(mode) {
+        retroAudio.playMenuClick();
+        gameMode = mode;
+        resetPaddleDimensions();
+        startNewMatch();
+        updateHUD();
+      }
+
+      function setDifficulty(diff) {
+        retroAudio.playMenuClick();
+        difficulty = diff;
+        updateHUD();
+      }
+
+      function setTheme(key) {
+        retroAudio.playMenuClick();
+        themeKey = key;
+        localStorage.setItem('retro_tennis_theme', key);
+        updateHUD();
+      }
+
+      function setScoringType(st) {
+        retroAudio.playMenuClick();
+        scoringType = st;
+        startNewMatch();
+        updateHUD();
+      }
+
+      function setTargetScore(pts) {
+        retroAudio.playMenuClick();
+        targetScore = pts;
+        startNewMatch();
+        updateHUD();
+      }
+
+      function setControlType(ct) {
+        retroAudio.playMenuClick();
+        controlType = ct;
+        localStorage.setItem('retro_tennis_control', ct);
+        updateHUD();
+      }
+
+      function toggleCrt() {
+        retroAudio.playMenuClick();
+        crtEnabled = !crtEnabled;
+        localStorage.setItem('retro_tennis_crt', crtEnabled.toString());
+        updateHUD();
+      }
+
+      function toggleMute() {
+        retroAudio.playMenuClick();
+        retroAudio.toggleMute();
+        updateHUD();
+      }
+
+      function toggleTouchPad() {
+        retroAudio.playMenuClick();
+        showTouchPad = !showTouchPad;
+        updateHUD();
+      }
+
+      // Keyboard Listeners
+      window.addEventListener('keydown', (e) => {
+        keys[e.code] = true;
+
+        if (e.code === 'Space') {
+          e.preventDefault();
+          handleActionKey();
+        } else if (e.code === 'KeyP' || e.code === 'Escape') {
+          e.preventDefault();
+          togglePause();
+        } else if (e.code === 'KeyM') {
+          toggleMute();
+        } else if (e.code === 'KeyR') {
+          startNewMatch();
+        }
+      });
+
+      window.addEventListener('keyup', (e) => {
+        keys[e.code] = false;
+      });
+
+      // Canvas Mouse & Touch
+      canvas.addEventListener('click', () => {
+        handleActionKey();
+      });
+
+      canvas.addEventListener('mousemove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const scaleY = CANVAS_HEIGHT / rect.height;
+        mouseY = (e.clientY - rect.top) * scaleY;
+      });
+
+      canvas.addEventListener('touchstart', (e) => {
+        retroAudio.init();
+        if (e.touches.length > 0) {
+          const rect = canvas.getBoundingClientRect();
+          const scaleY = CANVAS_HEIGHT / rect.height;
+          mouseY = (e.touches[0].clientY - rect.top) * scaleY;
+        }
+        if (gameState === 'MENU' || gameState === 'SERVING' || gameState === 'GAMEOVER') {
+          handleActionKey();
+        }
+      }, { passive: true });
+
+      canvas.addEventListener('touchmove', (e) => {
+        if (e.touches.length > 0) {
+          const rect = canvas.getBoundingClientRect();
+          const scaleY = CANVAS_HEIGHT / rect.height;
+          mouseY = (e.touches[0].clientY - rect.top) * scaleY;
+        }
+      }, { passive: true });
+
+      // On-Screen Touch D-Pad Handlers
+      function setupTouchDirection(buttonId, playerObj, dir) {
+        const btn = document.getElementById(buttonId);
+        if (!btn) return;
+        const start = (e) => {
+          e.preventDefault();
+          retroAudio.init();
+          playerObj.movingDir = dir;
+        };
+        const stop = (e) => {
+          e.preventDefault();
+          playerObj.movingDir = 0;
+        };
+        btn.addEventListener('pointerdown', start);
+        btn.addEventListener('pointerup', stop);
+        btn.addEventListener('pointerleave', stop);
+        btn.addEventListener('pointercancel', stop);
+      }
+
+      setupTouchDirection('p1UpBtn', p1, -1);
+      setupTouchDirection('p1DownBtn', p1, 1);
+      setupTouchDirection('p2UpBtn', p2, -1);
+      setupTouchDirection('p2DownBtn', p2, 1);
+
+      document.getElementById('touchServeBtn').addEventListener('click', (e) => {
+        e.preventDefault();
+        handleActionKey();
+      });
+
+      // Toolbar Buttons
+      document.getElementById('btnNewMatch').addEventListener('click', () => {
+        retroAudio.playMenuClick();
+        startNewMatch();
+      });
+
+      document.getElementById('btnPause').addEventListener('click', () => {
+        retroAudio.playMenuClick();
+        togglePause();
+      });
+
+      document.getElementById('btnAudio').addEventListener('click', toggleMute);
+      document.getElementById('topMuteBtn').addEventListener('click', toggleMute);
+
+      document.getElementById('btnCrtToggle').addEventListener('click', toggleCrt);
+      document.getElementById('settingsCrtCheckbox').addEventListener('change', toggleCrt);
+
+      document.getElementById('btnTouchToggle').addEventListener('click', toggleTouchPad);
+
+      document.getElementById('btnControlModeToggle').addEventListener('click', () => {
+        setControlType(controlType === 'keyboard' ? 'mouse' : 'keyboard');
+      });
+
+      document.getElementById('diffSelectDropdown').addEventListener('change', (e) => {
+        setDifficulty(e.target.value);
+      });
+
+      document.getElementById('themeSelectDropdown').addEventListener('change', (e) => {
+        setTheme(e.target.value);
+      });
+
+      // Volume Slider
+      const volumeSlider = document.getElementById('volumeSlider');
+      volumeSlider.value = retroAudio.volume;
+      document.getElementById('volumePercentDisplay').textContent = `${Math.round(retroAudio.volume * 100)}%`;
+
+      volumeSlider.addEventListener('input', (e) => {
+        const val = parseFloat(e.target.value);
+        retroAudio.setVolume(val);
+        document.getElementById('volumePercentDisplay').textContent = `${Math.round(val * 100)}%`;
+        if (val > 0 && retroAudio.muted) {
+          retroAudio.muted = false;
+        }
+        updateHUD();
+      });
+
+      // Reset High Score
+      document.getElementById('btnResetHighScore').addEventListener('click', () => {
+        retroAudio.playMenuClick();
+        localStorage.removeItem('retro_tennis_high_rally');
+        localStorage.removeItem('atari_tennis_high_rally');
+        stats.maxRally = 0;
+        updateHUD();
+      });
+
+      // Fullscreen Toggle
+      document.getElementById('fullscreenBtn').addEventListener('click', () => {
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen().catch(() => {});
+        } else {
+          document.exitFullscreen().catch(() => {});
+        }
+      });
+
+      // Modals
+      const settingsModal = document.getElementById('settingsModal');
+      const helpModal = document.getElementById('helpModal');
+
+      function openModal(modal) {
+        retroAudio.playMenuClick();
+        modal.classList.add('open');
+      }
+
+      function closeModal(modal) {
+        modal.classList.remove('open');
+      }
+
+      document.getElementById('btnSettingsModal').addEventListener('click', () => openModal(settingsModal));
+      document.getElementById('closeSettingsBtn').addEventListener('click', () => closeModal(settingsModal));
+      document.getElementById('closeSettingsBtnBottom').addEventListener('click', () => closeModal(settingsModal));
+
+      document.getElementById('btnHelpModal').addEventListener('click', () => openModal(helpModal));
+      document.getElementById('closeHelpBtn').addEventListener('click', () => closeModal(helpModal));
+      document.getElementById('closeHelpBtnBottom').addEventListener('click', () => closeModal(helpModal));
+
+      // Click outside to close modal
+      settingsModal.addEventListener('click', (e) => {
+        if (e.target === settingsModal) closeModal(settingsModal);
+      });
+      helpModal.addEventListener('click', (e) => {
+        if (e.target === helpModal) closeModal(helpModal);
+      });
+
+      /* ==========================================================================
+         7. BOOTSTRAP APP
+         ========================================================================== */
+      initStoragePreferences();
+      resetPaddleDimensions();
+      updateHUD();
+      requestAnimationFrame(gameLoop);
+    </script>
+  </body>
+</html>
